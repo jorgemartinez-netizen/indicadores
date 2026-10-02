@@ -1,29 +1,25 @@
-# Validación de esta entrega
+# Validación de la actualización de supervisión actual
 
-- Compilación Vite de producción: completada.
-- Empaquetado de las tres funciones con Netlify CLI: completado.
-- 21 pruebas Node: aprobadas, sin omitidas. Incluyen cookies, origen, destino fijo de la API, paginación completa, filtros, cálculos y Netlify Blobs local.
-- Prueba de funciones con proveedor local de Blobs y API sintética aislada: consulta completa, reutilización de caché, creación, seguimiento, protección por ETag y archivo aprobados.
-- Prueba Playwright con Chromium: login, ausencia de cifras de demostración, navegación de secciones, creación de programación, modal y viewport móvil de 390 px aprobados. Sin desbordamiento horizontal ni errores de JavaScript.
-- Netlify Dev: GET sin sesión → 401; login con contraseña sintética → 200; GET con sesión → 200; consulta autenticada del panel sin credencial GuardianCheck → 503 descriptivo.
-- Netlify Dev necesitó XDG_CONFIG_HOME en /workspace y deshabilitar su emulador de Edge Functions mediante una opción interna de CLI: el bootstrap remoto de Deno no era accesible. La aplicación no usa Edge Functions. Esta opción se usó solo para validación y no se agrega a la configuración de producción.
-- El emulador de Blobs omite ETag en GET; el adaptador verifica una versión estable con LIST antes y después de leer cuando no existe ese encabezado. Los cambios fallan si no se puede obtener una versión estable.
-- UI y funciones verificadas con fixtures sintéticos de pruebas. No están incorporados en la aplicación ni se usan como sustituto de datos reales.
-- Las referencias compartidas/plantillas de la habilidad Data no estuvieron disponibles en el lector ni en el filesystem. Se implementó la aplicación React y las funciones nativas para el destino Netlify elegido por el usuario, siguiendo el diseño oscuro acordado y las definiciones documentadas.
+- 33 pruebas Node aprobadas, sin omitidas: incluyen consulta actual de ayer/hoy, historial bajo demanda, cobertura autorizada, persistencia con Blobs local, conflictos de versiones, dotaciones vencidas/desconocidas y cuentas/registros no válidos.
+- Compilación de producción y empaquetado de las cuatro funciones (dashboard, planning, coverage y session) completados.
+- Playwright en Chromium: portada sin controles de fechas, dotación guardada y reflejada, navegación a historial con fechas, carga de gráficas solo en Indicadores, programación y modal móvil aprobados. Fixtures sintéticos aislados y capturas etiquetadas; sin consultas reales.
+- Revisión visual a 390 px: tarjetas compactas, cobertura con acciones, sin desbordamiento horizontal.
+- Benchmark sintético de 1.000 turnos y 30 días, mismo entorno: versión anterior 5.496 ms; versión optimizada unos 5 ms. Conserva 8.000 horas y todos los conteos. No es una medición del teléfono del usuario ni de latencia de red.
+- JS inicial anterior aproximadamente 651 kB sin comprimir; ahora aproximadamente 277 kB. La gráfica de aproximadamente 384 kB ya no se precarga en el HTML de entrada. La prueba de navegador comprueba que no se solicita antes de abrir Indicadores.
+- Los contadores históricos ya no se recalculan cada 15 s; la vista actual usa un reloj de 30 s y refresco API de 60 s, con pausa al ocultarse. Historial e Indicadores refrescan cada 5 min.
 
-## Pendientes externos
+## Alcance y límites
 
-La credencial GUARDIAN_API_KEY no está disponible en este entorno. No se han ejecutado consultas autenticadas a registros operativos reales de GuardianCheck. Tampoco hay identidad/sitio Netlify configurados: no hay publicación remota ni URL de producción acreditadas.
+La captura del usuario acredita que su sitio recibe datos. En este entorno siguen sin estar disponibles las credenciales de producción de GuardianCheck o Netlify; la actualización se prueba localmente y se sube a GitHub. No se acredita aquí el despliegue final de Netlify ni la consulta autenticada de esta versión a registros reales.
 
-Después de configurar las variables y publicar: entrar al panel, comprobar catálogos y turnos contra GuardianCheck, comparar sumas del mismo periodo y servicio, registrar una entrada programada y un aviso real, recargar para comprobar persistencia y confirmar que una sesión no autorizada no obtiene datos. Verificar un servicio no autorizado sin ampliar permisos para hacer pasar la prueba.
+La API no entrega la dotación necesaria por servicio. Se añade configuración explícita por turno, con vencimiento, guardada en un store nuevo sin modificar programación ni eventos anteriores. Sin dotación vigente se muestra desconocido; sin turno abierto se pide verificar y no se declara una ausencia. Los déficits se refieren a registros coherentes, no a presencia física. No se usa el catálogo de asignaciones como si fuera una programación obligatoria.
 
-## Prueba de interfaz reproducible
+Las notificaciones están solamente propuestas en AVISOS-PROPUESTA.md. No se implementaron cron, suscripciones, proveedores ni envíos, conforme a la petición del usuario.
 
-Con Netlify Dev o un servidor del frontend disponible:
+## Reproducción
 
-```sh
-npx playwright install chromium
-PANEL_TEST_URL=http://127.0.0.1:8888 npm run test:ui
-```
+`npm test`, `npm run build`, `npm run benchmark -- 1000`. Con el frontend o Netlify Dev activo: `npm run test:ui`, después de instalar Chromium mediante Playwright, o indicando PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH para un Chromium local. PANEL_TEST_URL permite cambiar el destino local.
 
-En máquinas con Chromium preinstalado puede usarse PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH. La prueba intercepta llamadas /api para su escenario de interfaz; no valida acceso real a GuardianCheck. Las capturas quedan en output/, excluido de Git, con etiqueta de prueba visual y datos sintéticos.
+Netlify Dev en este entorno necesita XDG_CONFIG_HOME en /workspace. Su emulador de Edge Functions requiere un bootstrap remoto no disponible; se usa la opción interna --internal-disable-edge-functions solamente durante validación local. La aplicación no usa Edge Functions y esa opción no se guarda en configuración de producción.
+
+Las pruebas de Blobs usan el servidor oficial local. Su GET omite ETag; el adaptador existente verifica una versión estable mediante LIST antes/después cuando es necesario. Las capturas van a output/, excluido de Git.

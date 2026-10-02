@@ -1,6 +1,6 @@
 # GuardianCheck · Control de operación
 
-Panel oscuro para Netlify con anticipación, operación diaria e indicadores. Consulta la API de GuardianCheck desde funciones del servidor. No incorpora cifras ficticias ni credenciales. Sin conexión muestra un error; sin programación muestra indicadores sin denominador como «—».
+Panel oscuro para Netlify con supervisión actual, cobertura por servicio, anticipación e indicadores históricos. Consulta la API de GuardianCheck desde funciones del servidor. No incorpora cifras ficticias ni credenciales. Sin conexión muestra un error; sin programación muestra indicadores sin denominador como «—».
 
 ## Publicar en Netlify
 
@@ -11,7 +11,7 @@ Panel oscuro para Netlify con anticipación, operación diaria e indicadores. Co
    - `GUARDIAN_API_URL`: `https://us-central1-guardiancheck-prod.cloudfunctions.net/integrationApi` (opcional, es el valor predeterminado).
 3. Si existen opciones para marcar valores como secretos, úsalas. No uses variables `VITE_` para secretos. Nunca los incluyas en código, Git o mensajes. Aplica las variables al contexto de producción; evita compartir credenciales reales con previews de cambios no revisados.
 4. Despliega el sitio. Netlify Blobs conserva la programación y el seguimiento entre despliegues del mismo sitio, con consistencia fuerte. Las credenciales de Blobs se suministran por Netlify; no se necesitan tokens adicionales en el código.
-5. Entra con la contraseña de supervisión. Confirma el estado «API conectada» y la fecha de los datos. Revisa servicios y turnos contra GuardianCheck. Para preparar anticipación, registra las entradas esperadas en **Anticipación → Programar entrada**.
+5. Entra con la contraseña de supervisión. Confirma el estado «API conectada» y la fecha de los datos. Revisa servicios y turnos contra GuardianCheck. En **Resumen** o **Servicios → Definir dotación**, indica cuántos guardias requiere cada turno y su hora de vencimiento; así se muestran puestos sin entrada válida. Para preparar anticipación, registra las entradas esperadas en **Anticipación → Programar entrada**.
 
 La integración de GuardianCheck debe estar habilitada en modalidad **servidor**, con permisos de **guards, sites, shifts y on-duty**, y servicios seleccionados explícitamente. La clave vence a los 90 días; al renovarla actualiza la variable de Netlify y vuelve a desplegar. La huella de caché cambia con la clave.
 
@@ -41,6 +41,8 @@ Los tests usan datos ficticios aislados y verifican cookies y origen, paginació
 
 ## Datos y definiciones
 
+- **Resumen y Servicios** muestran estado actual, sin seleccionar fechas. El historial de 30 días se descarga únicamente al abrir Indicadores o Historial. La vista actual usa turnos abiertos y entradas de ayer y hoy para cruzar programación.
+- **Cobertura actual** compara la dotación vigente definida por supervisión con guardias distintos que tienen entrada abierta coherente. No cuentan para esa dotación las cuentas no confirmadas como activas, perfiles inexistentes, entradas futuras/ilegibles o registros abiertos con salida. Los turnos duplicados no multiplican personas; sus flags siguen visibles para revisión. Los servicios sin dotación muestran faltantes desconocidos, no un cero inventado. La dotación admite 0–500 guardias, dura como máximo 7 días y vence a la hora indicada. Al vencer, se pide revisar; no se sigue afirmando un faltante con la dotación anterior. El déficit es de registros, no prueba una ausencia física.
 - **Operación diaria** consulta `/v1/on-duty`; las fechas históricas no limitan esta vista. Cuenta guardias por ID distinto, conservando turnos duplicados para revisión. Un turno abierto no prueba presencia física. Los IDs ausentes no se cuentan como personas.
 - **Historial** consulta `/v1/shifts`, seleccionados por fecha de entrada. Máximo 93 días inclusivos. Las fechas se agrupan en `America/Mexico_City`; los resultados se paginan completamente y se reconcilian por ID. Los datos pueden cambiar entre páginas: no son una instantánea transaccional.
 - **Horas registradas** suma `workedHours` de turnos cerrados con fechas válidas, sin recortar las horas al intervalo. No son horas aprobadas para nómina. La API conserva el reloj del dispositivo.
@@ -57,7 +59,7 @@ Los tests usan datos ficticios aislados y verifican cookies y origen, paginació
 
 Netlify Blobs guarda entradas programadas y eventos por registro. Las modificaciones usan ETag para evitar sobrescribir cambios concurrentes. «Retirar programación» archiva el registro y lo excluye de indicadores; no modifica GuardianCheck. No se permite programar dos entradas del mismo guardia separadas menos de cuatro horas. Se registran solamente guardias y servicios activos dentro del alcance autorizado.
 
-El panel refresca cada 60 segundos mientras está abierto y visible. No hay alertas por WhatsApp/correo ni monitor en segundo plano cuando todos los usuarios cierran el panel. Para esa operación continua se requiere configurar un proceso programado y un canal de notificación autorizado en una siguiente etapa.
+La vista actual refresca cada 60 segundos mientras está abierta y visible; Indicadores e Historial, cada 5 minutos. Las gráficas se descargan al abrir Indicadores, sin animaciones; la agrupación de días se calcula una sola vez por conjunto/servicio. Se paginan los turnos abiertos y los servicios para acotar el trabajo en móvil. La programación actual muestra entradas de las últimas 12 horas y las futuras; los turnos antiguos no se etiquetan como pendientes a partir de una consulta reciente. No hay alertas por WhatsApp/correo ni monitor en segundo plano cuando todos los usuarios cierran el panel. Para esa operación continua se requiere configurar un proceso programado y un canal de notificación autorizado en una siguiente etapa.
 
 La caché compartida de cada recurso dura 60 s, con bloqueo por consulta. El panel limita sus llamadas a 100 páginas/minuto por credencial, dejando margen frente a las 120/minuto de GuardianCheck. Otros consumidores pueden gastar el margen. Un 429 respeta Retry-After. Si falla una página no se muestra una consulta parcial; la UI conserva resultados anteriores con advertencia. Más de 3 minutos de antigüedad activa una advertencia y deshabilita registros de seguimiento. El contador, los bloqueos y la caché usan Blobs y escrituras condicionales.
 
@@ -68,3 +70,11 @@ El almacenamiento de registros y llaves de caché crece con el uso; antes de uso
 Contrato de la API v1 y guías de integración suministradas por el usuario. Copia del esquema: `docs/guardiancheck.openapi.json`. El registro de publicación describe comprobaciones de despliegue y emuladores; no acredita consultas autenticadas reales de esta app.
 
 Detalles de las comprobaciones, limitaciones y pruebas de interfaz: `docs/VALIDACION.md`.
+
+## Rendimiento y avisos
+
+Benchmark reproducible con datos sintéticos: `npm run benchmark -- 1000`. Para 1.000 turnos y 30 días, en el mismo entorno de esta entrega la agrupación pasó de 5.496 ms a unos 5 ms y conservó las 8.000 horas y los conteos diarios. Es una medición de cálculo, no del tiempo total en un teléfono. El JavaScript inicial de producción pasó de aproximadamente 651 kB a 277 kB sin comprimir; la gráfica de unos 384 kB se descarga posteriormente. El tamaño exacto puede variar entre compilaciones.
+
+La nueva configuración de dotación se guarda en el store `guardian-panel-coverage` de Netlify Blobs. No requiere nuevas variables de entorno ni altera registros existentes. El guardado usa ETag para evitar sobrescribir cambios concurrentes. Las actualizaciones se incorporan al siguiente refresco; los catálogos y turnos mantienen la caché de 60 segundos.
+
+Estudio de notificaciones, sin activación ni envíos: `docs/AVISOS-PROPUESTA.md`.
